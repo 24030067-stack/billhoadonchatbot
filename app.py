@@ -1,6 +1,5 @@
 import streamlit as st
 import datetime
-import io
 
 # ---------------------------------------------------------
 # 1. CẤU HÌNH TRANG & DỮ LIỆU MENU
@@ -67,8 +66,8 @@ st.markdown("---")
 # ---------------------------------------------------------
 st.subheader("📋 Tóm tắt đơn hàng")
 
-if ten_khach_hang.strip() == "":
-    st.warning("⚠️ Vui lòng nhập tên khách hàng để hoàn tất.")
+if not ten_khach_hang.strip():
+    st.warning("⚠️ Vui lòng nhập tên khách hàng để hoàn tất đơn hàng.")
 else:
     # Hiển thị thông tin tóm tắt trên giao diện
     st.markdown(f"**Khách hàng:** {ten_khach_hang}")
@@ -89,14 +88,14 @@ else:
     # ---------------------------------------------------------
     # 5. XUẤT HÓA ĐƠN RA FILE (.TXT)
     # ---------------------------------------------------------
-    thoi_gian_ hien_tai = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    thoi_gian_hien_tai = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Nội dung hóa đơn văn bản
     noi_dung_hoa_don = f"""===================================
         HÓA ĐƠN BÁN HÀNG
            QUÁN TRÀ SỮA
 ===================================
-Thời gian: {thoi_gian_ hien_tai}
+Thời gian: {thoi_gian_hien_tai}
 Khách hàng: {ten_khach_hang}
 
 -----------------------------------
@@ -111,11 +110,14 @@ TỔNG TIỀN: {tong_tien:,} VNĐ
 Cảm ơn quý khách và hẹn gặp lại!
 """
 
+    # Tạo tên file an toàn
+    ten_file = f"HoaDon_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+
     # Nút bấm thanh toán & Xuất file
     st.download_button(
         label="💳 Thanh toán & Xuất hóa đơn (File .txt)",
         data=noi_dung_hoa_don,
-        file_name=f"HoaDon_{ten_khach_hang.replace(' ', '_')}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        file_name=ten_file,
         mime="text/plain",
         type="primary"
     )

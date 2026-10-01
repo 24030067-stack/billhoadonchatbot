@@ -1,11 +1,16 @@
 import streamlit as st
 import datetime
+import os
 
 # ---------------------------------------------------------
 # 1. CẤU HÌNH TRANG & DỮ LIỆU MENU
 # ---------------------------------------------------------
 st.set_page_config(page_title="Tính Hóa Đơn Trà Sữa", page_icon="🧋", layout="centered")
-st.image("trasua.jpg")
+
+# Hiển thị ảnh nếu file tồn tại trong thư mục
+if os.path.exists("trasua.jpg"):
+    st.image("trasua.jpg")
+
 # Bảng giá Trà sữa (VNĐ)
 MENU_TRA_SUA = {
     "Trà sữa Truyền thống": 30000,
@@ -25,6 +30,10 @@ MENU_TOPPING = {
     "Kem Cheese": 10000
 }
 
+# Khởi tạo giỏ hàng trong session_state
+if "gio_hang" not in st.session_state:
+    st.session_state.gio_hang = []
+
 # ---------------------------------------------------------
 # 2. GIAO DIỆN CHÍNH
 # ---------------------------------------------------------
@@ -37,8 +46,8 @@ st.markdown("---")
 st.subheader("1. Thông tin khách hàng")
 ten_khach_hang = st.text_input("Tên khách hàng:", placeholder="Nhập tên khách hàng...")
 
-# Thông tin đồ uống
-st.subheader("2. Chi tiết món ăn")
+# Thông tin chọn đồ uống
+st.subheader("2. Chọn món vào đơn hàng")
 
 col1, col2 = st.columns(2)
 
@@ -50,48 +59,79 @@ with col2:
     so_luong = st.number_input("Số lượng:", min_value=1, max_value=50, value=1, step=1)
     toppings = st.multiselect("Thêm Topping:", list(MENU_TOPPING.keys()))
 
-# ---------------------------------------------------------
-# 3. TÍNH TOÁN CHI PHÍ
-# ---------------------------------------------------------
+# Tính toán giá món hiện tại đang chọn
 don_gia_tra_sua = MENU_TRA_SUA[loai_tra_sua]
 tong_tien_topping_1_ly = sum(MENU_TOPPING[top] for top in toppings)
-
 don_gia_1_ly = don_gia_tra_sua + tong_tien_topping_1_ly
-tong_tien = don_gia_1_ly * so_luong
+thanh_tien_mon = don_gia_1_ly * so_luong
+
+# Nút Thêm vào đơn hàng
+if st.button("➕ Thêm món này vào đơn", type="primary"):
+    mon_moi = {
+        "ten_mon": loai_tra_sua,
+        "don_gia_mon": don_gia_tra_sua,
+        "muc_duong": muc_duong,
+        "toppings": toppings,
+        "so_luong": so_luong,
+        "thanh_tien": thanh_tien_mon
+    }
+    st.session_state.gio_hang.append(mon_moi)
+    st.success(f"Đã thêm {so_luong} ly {loai_tra_sua} vào danh sách!")
 
 st.markdown("---")
 
 # ---------------------------------------------------------
-# 4. HIỂN THỊ TỔNG QUAN HÓA ĐƠN
+# 3. HIỂN THỊ DANH SÁCH MÓN ĐÃ CHỌN & TỔNG TIỀN
 # ---------------------------------------------------------
-st.subheader("📋 Tóm tắt đơn hàng")
+st.subheader("📋 Danh sách món đã chọn")
 
-if not ten_khach_hang.strip():
-    st.warning("⚠️ Vui lòng nhập tên khách hàng để hoàn tất đơn hàng.")
+if not st.session_state.gio_hang:
+    st.info("Chưa có món nào trong đơn hàng. Vui lòng chọn món và bấm 'Thêm món này vào đơn'.")
 else:
-    # Hiển thị thông tin tóm tắt trên giao diện
-    st.markdown(f"**Khách hàng:** {ten_khach_hang}")
-    st.markdown(f"**Loại trà sữa:** {loai_tra_sua} ({don_gia_tra_sua:,} VNĐ)")
-    st.markdown(f"**Mức đường:** {muc_duong}")
+    # Hiển thị từng món trong giỏ hàng
+    tong_cong_hoa_don = 0
     
-    if toppings:
-        list_topping_str = ", ".join([f"{t} (+{MENU_TOPPING[t]:,} VNĐ)" for t in toppings])
-        st.markdown(f"**Topping đi kèm:** {list_topping_str}")
-    else:
-        st.markdown("**Topping đi kèm:** Không chọn")
+    for i, item in enumerate(st.session_state.gio_hang):
+        tong_cong_hoa_don += item["thanh_tien"]
+        topping_str = ", ".join(item["toppings"]) if item["toppings"] else "Không"
         
-    st.markdown(f"**Số lượng:** {so_luong} ly")
-    st.markdown(f"### **💰 Tổng tiền thanh toán: {tong_tien:,} VNĐ**")
+        c1, c2 = st.columns([4, 1])
+        with c1:
+            st.markdown(
+                f"**{i+1}. {item['ten_mon']}** x **{item['so_luong']} ly** "
+                f"({item['thanh_tien']:,} VNĐ)\n"
+                f"- *Đường:* {item['muc_duong']} | *Topping:* {topping_str}"
+            )
+        with c2:
+            if st.button("❌ Xóa", key=f"xoa_{i}"):
+                st.session_state.gio_hang.pop(i)
+                st.rerun()
 
     st.markdown("---")
+    st.markdown(f"### **💰 TỔNG CỘNG THANH TOÁN: {tong_cong_hoa_don:,} VNĐ**")
 
     # ---------------------------------------------------------
-    # 5. XUẤT HÓA ĐƠN RA FILE (.TXT)
+    # 4. XUẤT HÓA ĐƠN RA FILE (.TXT)
     # ---------------------------------------------------------
-    thoi_gian_hien_tai = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # Nội dung hóa đơn văn bản
-    noi_dung_hoa_don = f"""===================================
+    if not ten_khach_hang.strip():
+        st.warning("⚠️ Vui lòng nhập tên khách hàng bên trên để tiến hành xuất hóa đơn.")
+    else:
+        thoi_gian_hien_tai = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Tạo chuỗi chi tiết từng món cho hóa đơn
+        chi_tiet_mon_txt = ""
+        for idx, item in enumerate(st.session_state.gio_hang, 1):
+            top_txt = ", ".join(item["toppings"]) if item["toppings"] else "Không"
+            chi_tiet_mon_txt += f"""
+{idx}. {item['ten_mon']}
+   - Số lượng: {item['so_luong']} ly
+   - Đường: {item['muc_duong']}
+   - Topping: {top_txt}
+   - Thành tiền: {item['thanh_tien']:,} VNĐ
+-----------------------------------"""
+
+        # Nội dung file hóa đơn
+        noi_dung_hoa_don = f"""===================================
         HÓA ĐƠN BÁN HÀNG
            QUÁN TRÀ SỮA
 ===================================
@@ -99,25 +139,28 @@ Thời gian: {thoi_gian_hien_tai}
 Khách hàng: {ten_khach_hang}
 
 -----------------------------------
-Món: {loai_tra_sua}
-Đơn giá trà sữa: {don_gia_tra_sua:,} VNĐ
-Mức đường: {muc_duong}
-Topping: {', '.join(toppings) if toppings else 'Không có'}
-Số lượng: {so_luong} ly
------------------------------------
-TỔNG TIỀN: {tong_tien:,} VNĐ
+CHI TIẾT ĐƠN HÀNG:{chi_tiet_mon_txt}
+===================================
+TỔNG CỘNG: {tong_cong_hoa_don:,} VNĐ
 ===================================
 Cảm ơn quý khách và hẹn gặp lại!
 """
 
-    # Tạo tên file an toàn
-    ten_file = f"HoaDon_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        col_pay1, col_pay2 = st.columns(2)
+        
+        with col_pay1:
+            # Nút tải hóa đơn
+            ten_file = f"HoaDon_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            st.download_button(
+                label="💳 Thanh toán & Xuất hóa đơn (.txt)",
+                data=noi_dung_hoa_don,
+                file_name=ten_file,
+                mime="text/plain",
+                type="primary"
+            )
 
-    # Nút bấm thanh toán & Xuất file
-    st.download_button(
-        label="💳 Thanh toán & Xuất hóa đơn (File .txt)",
-        data=noi_dung_hoa_don,
-        file_name=ten_file,
-        mime="text/plain",
-        type="primary"
-    )
+        with col_pay2:
+            # Nút hủy/làm mới đơn
+            if st.button("🗑️ Xóa toàn bộ đơn hàng"):
+                st.session_state.gio_hang = []
+                st.rerun()

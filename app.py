@@ -5,7 +5,7 @@ import datetime
 # 1. CẤU HÌNH TRANG & DỮ LIỆU MENU
 # ---------------------------------------------------------
 st.set_page_config(page_title="Tính Hóa Đơn Trà Sữa", page_icon="🧋", layout="centered")
-
+st.image("trasua.jpg")
 # Bảng giá Trà sữa (VNĐ)
 MENU_TRA_SUA = {
     "Trà sữa Truyền thống": 30000,
